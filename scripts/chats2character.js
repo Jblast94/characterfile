@@ -7,6 +7,7 @@ import inquirer from "inquirer";
 import os from 'os';
 import path from 'path';
 import { prompt_whatsapp } from './prompts/prompt-whatsapp.js';
+import { getParser } from './parsers/index.js';
 import OpenAI from 'openai';
 import { fileURLToPath } from 'url';
 import cliProgress from 'cli-progress';
@@ -103,6 +104,14 @@ const main = async () => {
          * Gets target user from options or prompts user to select
          */
         let targetUser = options.user;
+
+        if (options.list) {
+            const users = findUsers(inputPath);
+            console.log('Users found:');
+            users.forEach(u => console.log(`- ${u}`));
+            process.exit(0);
+        }
+
         if (!targetUser) {
             const users = findUsers(inputPath);
             if (users.length === 0) {
@@ -567,38 +576,17 @@ const extractMessagesFromFile = async (filePath, targetUser, dirs, skipSave = fa
     }
 
     const content = fs.readFileSync(filePath, 'utf-8');
-    const lines = content.split('\n');
-    const messages = [];
-    const messageRegex = /\[(.*?)\] (.*?):(.*)/;
-    const foundUsers = new Set();
+    const parser = getParser(filePath);
 
-    lines.forEach(line => {
-        const match = line.match(messageRegex);
-        if (match) {
-            const [, timestamp, user, message] = match;
-            foundUsers.add(user.trim());
+    if (!parser) {
+        Logger.error(`No suitable parser found for ${filePath}`);
+        return [];
+    }
 
-            // Skip media messages, deleted messages and message edits
-            if (message.includes('image omitted') ||
-                message.includes('sticker omitted') ||
-                message.includes('audio omitted') ||
-                message.includes('video omitted') ||
-                message.includes('document omitted') ||
-                message.includes('This message was deleted') ||
-                message.includes('This message was edited')) {
-                return;
-            }
+    const { messages, users: foundUsers } = parser.parse(content, targetUser);
 
-            // Case insensitive comparison
-            if (user.trim().toLowerCase() === targetUser.trim().toLowerCase()) {
-                messages.push({
-                    timestamp,
-                    message: message.trim(),
-                    sourceFile: path.basename(filePath)
-                });
-            }
-        }
-    });
+    // Add sourceFile to messages
+    messages.forEach(msg => msg.sourceFile = path.basename(filePath));
 
     Logger.success(`Found ${messages.length} messages for ${targetUser} in ${path.basename(filePath)}`);
 
@@ -610,7 +598,7 @@ const extractMessagesFromFile = async (filePath, targetUser, dirs, skipSave = fa
         Logger.success(`Messages saved to: ${userOutputPath}`);
 
         const usersListPath = path.join(dirs.analytics, 'found_users.json'); // TODO: do this for directories too
-        fs.writeFileSync(usersListPath, JSON.stringify(Array.from(foundUsers), null, 2));
+        fs.writeFileSync(usersListPath, JSON.stringify(foundUsers, null, 2));
         Logger.success(`Users list saved to: ${usersListPath}`);
     }
 
@@ -709,7 +697,8 @@ const processDirectory = async (directory, targetUser, dirs) => {
 
     // First pass: collect all messages from each file
     for (const file of files) {
-        if (file.endsWith('.txt')) {
+        const parser = getParser(file);
+        if (parser) {
             const filePath = path.join(directory, file);
             Logger.info(`Processing file: ${filePath}`);
 
@@ -824,25 +813,21 @@ const promptForApiKey = async (model) => {
  */
 const findUsers = (inputPath) => {
     const users = new Set();
-    const messageRegex = /\[(.*?)\] (.*?):(.*)/;
 
     const processFile = (filePath) => {
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const lines = content.split('\n');
+        const parser = getParser(filePath);
+        if (!parser) return;
 
-        lines.forEach(line => {
-            const match = line.match(messageRegex);
-            if (match) {
-                const [, , user] = match;
-                users.add(user.trim());
-            }
-        });
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const { users: foundUsers } = parser.parse(content);
+        foundUsers.forEach(user => users.add(user));
     };
 
     if (fs.statSync(inputPath).isDirectory()) {
         const files = fs.readdirSync(inputPath);
         files.forEach(file => {
-            if (file.endsWith('.txt')) {
+            const parser = getParser(file);
+            if (parser) {
                 processFile(path.join(inputPath, file));
             }
         });

@@ -34,7 +34,6 @@
     "node-fetch": "^3.3.2",
     "node-llama-cpp": "^3.0.0-beta.44",
     "node-stream-zip": "^1.15.0",
-    "pdfjs-dist": "2.x",
     "sanitize-filename": "^1.6.3",
     "openai": "^4.79.1",
     "pdfjs-dist": "^2.16.105",
