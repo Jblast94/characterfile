@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import cliProgress from 'cli-progress';
+import chalk from 'chalk';
 import { program } from 'commander';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -563,7 +564,13 @@ const resumeOrStartNewSession = async (projectCache, archivePath) => {
   }
 
   if (!projectCache.unfinishedSession) {
-    projectCache.model = await promptUser('Select model (openai/claude/openrouter/grok): ');
+    const { model } = await inquirer.prompt([{
+      type: 'list',
+      name: 'model',
+      message: 'Select model:',
+      choices: ['openai', 'claude', 'openrouter', 'grok']
+    }]);
+    projectCache.model = model;
     projectCache.basicUserInfo = await promptUser('Enter additional user info that might help the summarizer (real name, nicknames and handles, age, past employment vs current, etc): ');
     projectCache.unfinishedSession = {
       currentChunk: 0,
@@ -593,8 +600,24 @@ const main = async () => {
   try {
     let archivePath = program.args[0];
 
+    if (archivePath && !fs.existsSync(archivePath)) {
+      console.log(chalk.red(`Error: File not found at ${archivePath}`));
+      archivePath = null;
+    }
+
     if (!archivePath) {
-      archivePath = await promptUser('Please provide the path to your Twitter archive zip file:');
+      const response = await inquirer.prompt([{
+        type: 'input',
+        name: 'path',
+        message: 'Please provide the path to your Twitter archive zip file:',
+        validate: (value) => {
+          if (fs.existsSync(value)) {
+            return true;
+          }
+          return 'File not found. Please try again.';
+        }
+      }]);
+      archivePath = response.path;
     }
 
     let projectCache = loadProjectCache(archivePath) || {};
