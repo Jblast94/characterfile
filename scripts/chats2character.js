@@ -802,7 +802,16 @@ const validateApiKey = (apiKey, model) => {
 };
 
 const promptForApiKey = async (model) => {
-    return await promptUser(`Enter ${model.toUpperCase()} API key: `);
+    console.log();
+    const { apiKey } = await inquirer.prompt([
+        {
+            type: 'password',
+            name: 'apiKey',
+            message: `Enter ${model.toUpperCase()} API key: `,
+            mask: '*'
+        },
+    ]);
+    return apiKey;
 };
 
 /**
