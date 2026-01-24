@@ -546,7 +546,16 @@ const validateApiKey = (apiKey, model) => {
 };
 
 const promptForApiKey = async (model) => {
-  return await promptUser(`Enter ${model.toUpperCase()} API key: `);
+  console.log();
+  const { apiKey } = await inquirer.prompt([
+    {
+      type: 'password',
+      name: 'apiKey',
+      message: `Enter ${model.toUpperCase()} API key: `,
+      mask: '*'
+    },
+  ]);
+  return apiKey;
 };
 
 
@@ -563,7 +572,16 @@ const resumeOrStartNewSession = async (projectCache, archivePath) => {
   }
 
   if (!projectCache.unfinishedSession) {
-    projectCache.model = await promptUser('Select model (openai/claude/openrouter/grok): ');
+    console.log();
+    const { model } = await inquirer.prompt([{
+      type: 'list',
+      name: 'model',
+      message: 'Select model:',
+      choices: ['openai', 'claude', 'openrouter', 'grok'],
+      default: 'claude'
+    }]);
+    projectCache.model = model;
+
     projectCache.basicUserInfo = await promptUser('Enter additional user info that might help the summarizer (real name, nicknames and handles, age, past employment vs current, etc): ');
     projectCache.unfinishedSession = {
       currentChunk: 0,
