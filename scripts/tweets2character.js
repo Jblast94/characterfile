@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import cliProgress from 'cli-progress';
+import chalk from 'chalk';
 import { program } from 'commander';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -29,7 +30,7 @@ if (!fs.existsSync(envPath)) {
 let basicUserInfo = "";
 
 const logError = (message, error) => {
-  console.error(`[${new Date().toISOString()}] ERROR: ${message}`);
+  console.error(chalk.red(`[${new Date().toISOString()}] ERROR: ${message}`));
   if (error) {
     console.error(util.inspect(error, { depth: null, colors: true }));
   }
@@ -563,7 +564,17 @@ const resumeOrStartNewSession = async (projectCache, archivePath) => {
   }
 
   if (!projectCache.unfinishedSession) {
-    projectCache.model = await promptUser('Select model (openai/claude/openrouter/grok): ');
+    console.log();
+    const { model } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'model',
+        message: 'Select model:',
+        choices: ['openai', 'claude', 'openrouter', 'grok'],
+        default: 'openai'
+      }
+    ]);
+    projectCache.model = model;
     projectCache.basicUserInfo = await promptUser('Enter additional user info that might help the summarizer (real name, nicknames and handles, age, past employment vs current, etc): ');
     projectCache.unfinishedSession = {
       currentChunk: 0,
@@ -586,11 +597,14 @@ const safeExecute = async (func, errorMessage) => {
 
 const saveCharacterData = (character) => {
   fs.writeFileSync('character.json', JSON.stringify(character, null, 2));
-  console.log('Character data saved to character.json');
+  console.log(chalk.green('✅ Character data saved to character.json'));
 };
 
 const main = async () => {
   try {
+    console.log(chalk.cyan('\n🐦 Twitter Archive Character Generator'));
+    console.log(chalk.dim('This script will process your Twitter archive and generate a character file.\n'));
+
     let archivePath = program.args[0];
 
     if (!archivePath) {
@@ -659,8 +673,12 @@ const main = async () => {
     projectCache.unfinishedSession.completed = true;
     saveProjectCache(archivePath, projectCache);
     clearGenerationCache(archivePath);
+
+    console.log();
+    console.log(chalk.green('✨ Generation completed successfully!'));
+    console.log(chalk.cyan('📂 Output:'), path.resolve('character.json'));
   } catch (error) {
-    console.error('Error during script execution:', error);
+    console.error(chalk.red('Error during script execution:'), error);
     process.exit(1);
   }
 };
