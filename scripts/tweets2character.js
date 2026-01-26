@@ -468,6 +468,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 program
+  .argument('[archivePath]', 'Path to the Twitter archive zip file')
   .option('--openai <api_key>', 'OpenAI API key')
   .option('--claude <api_key>', 'Claude API key')
   .option('--grok <api_key>', 'Grok API key')
@@ -546,24 +547,41 @@ const validateApiKey = (apiKey, model) => {
 };
 
 const promptForApiKey = async (model) => {
-  return await promptUser(`Enter ${model.toUpperCase()} API key: `);
+  console.log();
+  const { answer } = await inquirer.prompt([{
+    type: 'password',
+    name: 'answer',
+    message: `Enter ${model.toUpperCase()} API key: `,
+    mask: '*'
+  }]);
+  return answer;
 };
 
 
 const resumeOrStartNewSession = async (projectCache, archivePath) => {
   if (projectCache.unfinishedSession) {
-    const choice = await promptUser(
-      'An unfinished session was found. Continue? (Y/n): ',
-      'Y'
-    );
-    if (choice.toLowerCase() !== 'y') {
+    console.log();
+    const { choice } = await inquirer.prompt([{
+      type: 'confirm',
+      name: 'choice',
+      message: 'An unfinished session was found. Continue?',
+      default: true
+    }]);
+    if (!choice) {
       projectCache.unfinishedSession = null;
       clearGenerationCache(archivePath);
     }
   }
 
   if (!projectCache.unfinishedSession) {
-    projectCache.model = await promptUser('Select model (openai/claude/openrouter/grok): ');
+    console.log();
+    const { model } = await inquirer.prompt([{
+      type: 'list',
+      name: 'model',
+      message: 'Select model:',
+      choices: ['openai', 'claude', 'openrouter', 'grok']
+    }]);
+    projectCache.model = model;
     projectCache.basicUserInfo = await promptUser('Enter additional user info that might help the summarizer (real name, nicknames and handles, age, past employment vs current, etc): ');
     projectCache.unfinishedSession = {
       currentChunk: 0,
