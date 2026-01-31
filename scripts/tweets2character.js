@@ -62,6 +62,39 @@ const promptUser = async (question, defaultValue = '') => {
   return answer;
 };
 
+const promptConfirm = async (message, defaultValue = true) => {
+  console.log();
+  const { answer } = await inquirer.prompt([{
+    type: 'confirm',
+    name: 'answer',
+    message: message,
+    default: defaultValue
+  }]);
+  return answer;
+};
+
+const promptSelect = async (message, choices) => {
+  console.log();
+  const { answer } = await inquirer.prompt([{
+    type: 'list',
+    name: 'answer',
+    message: message,
+    choices: choices
+  }]);
+  return answer;
+};
+
+const promptSecret = async (message) => {
+  console.log();
+  const { answer } = await inquirer.prompt([{
+    type: 'password',
+    name: 'answer',
+    message: message,
+    mask: '*'
+  }]);
+  return answer;
+};
+
 const runChatCompletion = async (messages, useGrammar = false, model) => {
   if (model === 'openai') {
     const modelName = 'gpt-4o';
@@ -546,24 +579,27 @@ const validateApiKey = (apiKey, model) => {
 };
 
 const promptForApiKey = async (model) => {
-  return await promptUser(`Enter ${model.toUpperCase()} API key: `);
+  return await promptSecret(`Enter ${model.toUpperCase()} API key: `);
 };
 
 
 const resumeOrStartNewSession = async (projectCache, archivePath) => {
   if (projectCache.unfinishedSession) {
-    const choice = await promptUser(
-      'An unfinished session was found. Continue? (Y/n): ',
-      'Y'
+    const shouldContinue = await promptConfirm(
+      'An unfinished session was found. Continue?',
+      true
     );
-    if (choice.toLowerCase() !== 'y') {
+    if (!shouldContinue) {
       projectCache.unfinishedSession = null;
       clearGenerationCache(archivePath);
     }
   }
 
   if (!projectCache.unfinishedSession) {
-    projectCache.model = await promptUser('Select model (openai/claude/openrouter/grok): ');
+    projectCache.model = await promptSelect(
+      'Select model:',
+      ['openai', 'claude', 'openrouter', 'grok']
+    );
     projectCache.basicUserInfo = await promptUser('Enter additional user info that might help the summarizer (real name, nicknames and handles, age, past employment vs current, etc): ');
     projectCache.unfinishedSession = {
       currentChunk: 0,
