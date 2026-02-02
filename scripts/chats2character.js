@@ -109,16 +109,10 @@ const main = async () => {
                 throw new Error('No users found in chat file(s)');
             }
 
-            const { selectedUser } = await inquirer.prompt([{
-                type: 'list',
-                name: 'selectedUser',
-                message: fs.statSync(inputPath).isDirectory()
-                    ? 'Select the user to analyze from all chats:'
-                    : `Select the user to analyze from ${path.basename(inputPath)}:`,
-                choices: users
-            }]);
-
-            targetUser = selectedUser;
+            const message = fs.statSync(inputPath).isDirectory()
+                ? 'Select the user to analyze from all chats:'
+                : `Select the user to analyze from ${path.basename(inputPath)}:`;
+            targetUser = await promptSelect(message, users);
         }
 
         /*
@@ -137,14 +131,7 @@ const main = async () => {
                 process.env.GOOGLE_API_KEY = options.google;
             }
         } else {
-            const { selectedModel } = await inquirer.prompt([{
-                type: 'list',
-                name: 'selectedModel',
-                message: 'Select the model to use:',
-                choices: ['openai', 'claude', 'google'],
-                default: 'openai'
-            }]);
-            model = selectedModel;
+            model = await promptSelect('Select the model to use:', ['openai', 'claude', 'google']);
         }
         console.log('Model:', model);
 
@@ -187,8 +174,7 @@ const main = async () => {
 
         let useCache = true;
         if (hasCachedResponses) {
-            const choice = await promptUser('Cached API responses found. Do you want to use them? (Y/n): ', 'Y');
-            useCache = choice.toLowerCase() === 'y';
+            useCache = await promptConfirm('Cached API responses found. Do you want to use them?', true);
 
             if (!useCache) {
                 Logger.info('Clearing cached API responses...');
@@ -552,12 +538,7 @@ const extractMessagesFromFile = async (filePath, targetUser, dirs, skipSave = fa
         const normalizedUser = normalizeFileName(targetUser);
         const userOutputPath = path.join(dirs.processed, `${normalizedUser}_messages.json`);
         if (fs.existsSync(userOutputPath)) {
-            const { reprocess } = await inquirer.prompt([{
-                type: 'confirm',
-                name: 'reprocess',
-                message: `Found existing processed messages for ${targetUser}. Would you like to process again?`,
-                default: false
-            }]);
+            const reprocess = await promptConfirm(`Found existing processed messages for ${targetUser}. Would you like to process again?`, false);
 
             if (!reprocess) {
                 Logger.info('Using existing processed messages.');
@@ -802,7 +783,7 @@ const validateApiKey = (apiKey, model) => {
 };
 
 const promptForApiKey = async (model) => {
-    return await promptUser(`Enter ${model.toUpperCase()} API key: `);
+    return await promptSecret(`Enter ${model.toUpperCase()} API key: `);
 };
 
 /**
@@ -990,8 +971,8 @@ const resumeOrStartNewSession = async (projectCache, inputPath, options, model) 
         });
 
         // Prompt specifically about continuing with cached session
-        const choice = await promptUser('Want to continue with the cached session? (Y/n): ', 'Y');
-        if (choice.toLowerCase() === 'y') {
+        const continueSession = await promptConfirm('Want to continue with the cached session?', true);
+        if (continueSession) {
             Logger.success('Continuing with cached session...');
             return projectCache; // Return existing cache without modification
         }
@@ -1114,6 +1095,45 @@ const promptUser = async (question, defaultValue = '') => {
         message: question,
         default: defaultValue,
     }]);
+    return answer;
+};
+
+const promptConfirm = async (question, defaultAnswer = true) => {
+    console.log();
+    const { answer } = await inquirer.prompt([
+        {
+            type: 'confirm',
+            name: 'answer',
+            message: question,
+            default: defaultAnswer,
+        },
+    ]);
+    return answer;
+};
+
+const promptSelect = async (question, choices) => {
+    console.log();
+    const { answer } = await inquirer.prompt([
+        {
+            type: 'list',
+            name: 'answer',
+            message: question,
+            choices: choices,
+        },
+    ]);
+    return answer;
+};
+
+const promptSecret = async (question) => {
+    console.log();
+    const { answer } = await inquirer.prompt([
+        {
+            type: 'password',
+            name: 'answer',
+            message: question,
+            mask: '*',
+        },
+    ]);
     return answer;
 };
 
