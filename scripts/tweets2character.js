@@ -88,7 +88,7 @@ const promptSelect = async (question, choices) => {
   return answer;
 };
 
-const promptSecret = async (question) => {
+const promptSecret = async (question, validator) => {
   console.log();
   const { answer } = await inquirer.prompt([
     {
@@ -96,6 +96,7 @@ const promptSecret = async (question) => {
       name: 'answer',
       message: question,
       mask: '*',
+      validate: validator,
     },
   ]);
   return answer;
@@ -561,10 +562,7 @@ const getApiKey = async (model) => {
   const cachedKey = loadApiKey(model);
   if (validateApiKey(cachedKey, model)) return cachedKey;
 
-  let newKey = '';
-  while (!validateApiKey(newKey, model)) {
-    newKey = await promptForApiKey(model);
-  }
+  const newKey = await promptForApiKey(model);
   saveApiKey(model, newKey);
   return newKey;
 };
@@ -585,7 +583,14 @@ const validateApiKey = (apiKey, model) => {
 };
 
 const promptForApiKey = async (model) => {
-  return await promptSecret(`Enter ${model.toUpperCase()} API key: `);
+  const validator = (input) => {
+    if (validateApiKey(input, model)) return true;
+    if (model === 'openai') return 'OpenAI API key must start with sk-';
+    if (model === 'grok') return 'Grok API key must start with xai-';
+    if (model === 'openrouter') return 'OpenRouter API key must start with sk-';
+    return 'Invalid API key format.';
+  };
+  return await promptSecret(`Enter ${model.toUpperCase()} API key: `, validator);
 };
 
 
