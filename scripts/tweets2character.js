@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import cliProgress from 'cli-progress';
+import chalk from 'chalk';
 import { program } from 'commander';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -621,8 +622,12 @@ const safeExecute = async (func, errorMessage) => {
 };
 
 const saveCharacterData = (character) => {
-  fs.writeFileSync('character.json', JSON.stringify(character, null, 2));
-  console.log('Character data saved to character.json');
+  const outputPath = path.resolve('character.json');
+  fs.writeFileSync(outputPath, JSON.stringify(character, null, 2));
+  console.log();
+  console.log(chalk.green('✅ Character generated successfully!'));
+  console.log(chalk.cyan('📂 Output:'), outputPath);
+  console.log(chalk.dim('You can now use this character file with your agent.'));
 };
 
 const main = async () => {
