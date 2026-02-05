@@ -47,7 +47,7 @@ const parseJsonFromMarkdown = (text) => {
   return null;
 };
 
-const promptUser = async (question, defaultValue = '') => {
+const promptUser = async (question, defaultValue = '', validator) => {
   // Add a newline before the prompt
   console.log();
 
@@ -57,6 +57,7 @@ const promptUser = async (question, defaultValue = '') => {
       name: 'answer',
       message: question,
       default: defaultValue,
+      validate: validator,
     },
   ]);
   return answer;
@@ -630,7 +631,10 @@ const main = async () => {
     let archivePath = program.args[0];
 
     if (!archivePath) {
-      archivePath = await promptUser('Please provide the path to your Twitter archive zip file:');
+      archivePath = await promptUser('Please provide the path to your Twitter archive zip file:', '', (input) => {
+        if (fs.existsSync(input)) return true;
+        return 'File not found. Please try again.';
+      });
     }
 
     let projectCache = loadProjectCache(archivePath) || {};

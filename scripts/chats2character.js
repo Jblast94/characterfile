@@ -95,7 +95,10 @@ const main = async () => {
          */
         let inputPath = options.file || options.dir || './chats';
         if (!fs.existsSync(inputPath)) {
-            inputPath = await promptUser('Enter the path to chat file or directory:');
+            inputPath = await promptUser('Enter the path to chat file or directory:', '', (input) => {
+                if (fs.existsSync(input)) return true;
+                return 'File or directory not found. Please try again.';
+            });
         }
 
         /*
@@ -1106,13 +1109,14 @@ const writeCacheFile = (cacheDir, fileName, content) => {
  * - Uses inquirer to show interactive prompt
  * - Returns user's answer as string
  */
-const promptUser = async (question, defaultValue = '') => {
+const promptUser = async (question, defaultValue = '', validator) => {
     console.log();
     const { answer } = await inquirer.prompt([{
         type: 'input',
         name: 'answer',
         message: question,
         default: defaultValue,
+        validate: validator,
     }]);
     return answer;
 };
