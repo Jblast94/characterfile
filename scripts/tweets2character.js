@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import chalk from 'chalk';
 import cliProgress from 'cli-progress';
 import { program } from 'commander';
 import dotenv from 'dotenv';
@@ -28,8 +29,21 @@ if (!fs.existsSync(envPath)) {
 
 let basicUserInfo = "";
 
+// Console styling helpers
+const Logger = {
+  info: (msg) => console.log(chalk.cyan(`ℹ️  ${msg}`)),
+  success: (msg) => console.log(chalk.green(`✅ ${msg}`)),
+  warn: (msg) => console.error(chalk.yellow(`⚠️  ${msg}`)),
+  error: (msg) => console.error(chalk.red(`❌ ${msg}`)),
+  debug: (msg) => console.log(chalk.dim(`🔍 ${msg}`)),
+  section: (msg) => {
+    console.log('\n' + chalk.bold.cyan(msg));
+    console.log(chalk.dim('═'.repeat(50)));
+  },
+};
+
 const logError = (message, error) => {
-  console.error(`[${new Date().toISOString()}] ERROR: ${message}`);
+  Logger.error(message);
   if (error) {
     console.error(util.inspect(error, { depth: null, colors: true }));
   }
@@ -622,12 +636,16 @@ const safeExecute = async (func, errorMessage) => {
 };
 
 const saveCharacterData = (character) => {
-  fs.writeFileSync('character.json', JSON.stringify(character, null, 2));
-  console.log('Character data saved to character.json');
+  const outputPath = path.resolve('character.json');
+  fs.writeFileSync(outputPath, JSON.stringify(character, null, 2));
+  Logger.success(`Character data saved to: ${outputPath}`);
+  Logger.info('You can now use this character file with Eliza or other agents.');
 };
 
 const main = async () => {
   try {
+    Logger.section('🐦 Tweets to Character Generator');
+
     let archivePath = program.args[0];
 
     if (!archivePath) {
